@@ -453,6 +453,12 @@ export default function SettingsPage() {
           )}
         </Tabs>
       </motion.div>
+
+      <EditMemberDialog
+        userId={editMemberUserId}
+        open={!!editMemberUserId}
+        onOpenChange={(open) => !open && setEditMemberUserId(null)}
+      />
     </div>
   );
 }

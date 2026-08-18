@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Search, Users, Shield, Ban, UserCheck, UserX, KeyRound, MoreHorizontal, ShieldCheck, ShieldOff } from "lucide-react";
+import { Search, Users, Shield, Ban, UserCheck, UserX, KeyRound, MoreHorizontal, ShieldCheck, ShieldOff, Pencil } from "lucide-react";
+import { EditUserDialog } from "@/components/admin/EditUserDialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useAllProfiles, useAllOrgMembers } from "@/hooks/useAdminData";
@@ -29,6 +30,7 @@ export default function AdminUsers() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+  const [editUserId, setEditUserId] = useState<string | null>(null);
 
   const updateStatus = useUpdateAccountStatus();
   const assignSA = useAssignSuperAdmin();
@@ -191,6 +193,10 @@ export default function AdminUsers() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem onClick={() => setEditUserId(p.id)}>
+                              <Pencil className="h-4 w-4 mr-2" /> Edit Details
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                             {accountStatus === "active" && (
                               <>
                                 <DropdownMenuItem onClick={() => setConfirmAction({ type: "status", userId: p.id, userName: p.full_name, status: "suspended" })} disabled={isSelf}>
@@ -232,6 +238,8 @@ export default function AdminUsers() {
           </div>
         </CardContent>
       </Card>
+
+      <EditUserDialog userId={editUserId} open={!!editUserId} onOpenChange={(open) => !open && setEditUserId(null)} />
 
       <AlertDialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
         <AlertDialogContent>

@@ -8,7 +8,8 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, ExternalLink, Upload, Image as ImageIcon } from "lucide-react";
+import { Plus, Trash2, ExternalLink, Upload, Image as ImageIcon, Pencil } from "lucide-react";
+import { EditMemberDialog } from "@/components/dashboard/EditMemberDialog";
 import { useClinicSettings, useUpdateClinicSettings, type SiteSettings } from "@/hooks/useClinicSettings";
 import { useNotificationPreferences, useUpsertNotificationPreferences } from "@/hooks/useNotificationPreferences";
 import { useOrgMembers, useUpdateOrgMemberRole, useRemoveOrgMember } from "@/hooks/useOrgMembers";
@@ -97,6 +98,7 @@ export default function SettingsPage() {
 
   // Org members
   const { data: members = [] } = useOrgMembers();
+  const [editMemberUserId, setEditMemberUserId] = useState<string | null>(null);
   const updateMemberRole = useUpdateOrgMemberRole();
   const removeMember = useRemoveOrgMember();
   const [editMemberId, setEditMemberId] = useState<string | null>(null);
@@ -381,10 +383,13 @@ export default function SettingsPage() {
                               </Button>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-2">
-                              <Button variant="outline" size="sm" className="h-8 text-xs border-border/50" onClick={() => { setEditMemberId(member.id); setNewRole(""); }}>
-                                Change Role
-                              </Button>
+                             <div className="flex items-center gap-2">
+                               <Button variant="outline" size="sm" className="h-8 text-xs border-border/50" onClick={() => setEditMemberUserId(member.user_id)}>
+                                 <Pencil className="h-3 w-3 mr-1" /> Edit Details
+                               </Button>
+                               <Button variant="outline" size="sm" className="h-8 text-xs border-border/50" onClick={() => { setEditMemberId(member.id); setNewRole(""); }}>
+                                 Change Role
+                               </Button>
                               {member.role !== "owner" && (
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => removeMember.mutate(member.id)}>
                                   <Trash2 className="h-3.5 w-3.5" />
@@ -448,6 +453,12 @@ export default function SettingsPage() {
           )}
         </Tabs>
       </motion.div>
+
+      <EditMemberDialog
+        userId={editMemberUserId}
+        open={!!editMemberUserId}
+        onOpenChange={(open) => !open && setEditMemberUserId(null)}
+      />
     </div>
   );
 }

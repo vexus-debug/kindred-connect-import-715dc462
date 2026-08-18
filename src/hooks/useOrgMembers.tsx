@@ -51,6 +51,52 @@ export function useUpdateOrgMemberRole() {
   });
 }
 
+export interface MemberDetails {
+  user_id: string;
+  email: string;
+  full_name: string;
+  phone: string;
+  role: string;
+}
+
+async function callManageStaffUser(body: Record<string, unknown>) {
+  const res = await supabase.functions.invoke("manage-staff-user", { body });
+  if (res.error) throw new Error(res.error.message || "Request failed");
+  if ((res.data as any)?.error) throw new Error((res.data as any).error);
+  return res.data as any;
+}
+
+export async function fetchMemberDetails(orgId: string, userId: string): Promise<MemberDetails> {
+  const data = await callManageStaffUser({ action: "get_member_details", org_id: orgId, user_id: userId });
+  return data.member as MemberDetails;
+}
+
+export function useUpdateOrgMemberDetails() {
+  const queryClient = useQueryClient();
+  const { currentOrg } = useOrg();
+  return useMutation({
+    mutationFn: async (payload: {
+      user_id: string;
+      full_name?: string;
+      phone?: string;
+      email?: string;
+      password?: string;
+    }) => {
+      return callManageStaffUser({
+        action: "update_member_details",
+        org_id: currentOrg?.org_id,
+        ...payload,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["org-members"] });
+      queryClient.invalidateQueries({ queryKey: ["staff"] });
+      toast({ title: "Member updated" });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+}
+
 export function useRemoveOrgMember() {
   const queryClient = useQueryClient();
   return useMutation({

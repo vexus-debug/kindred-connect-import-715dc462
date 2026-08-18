@@ -38,7 +38,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { action, org_id, email, password, full_name, role, staff_id, user_id } = body;
+    const { action, org_id, email, password, full_name, phone, role, staff_id, user_id } = body;
 
     // Verify caller has owner/admin access to this org
     const { data: membership } = await supabaseAdmin
@@ -133,6 +133,103 @@ serve(async (req) => {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "get_member_details" || action === "update_member_details") {
+      if (!user_id) {
+        return new Response(JSON.stringify({ error: "user_id is required" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Verify the target user belongs to the same org
+      const { data: targetMembership } = await supabaseAdmin
+        .from("org_members")
+        .select("id, role")
+        .eq("user_id", user_id)
+        .eq("org_id", org_id)
+        .maybeSingle();
+
+      if (!targetMembership) {
+        return new Response(JSON.stringify({ error: "User not found in this organization" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (action === "get_member_details") {
+        const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(user_id);
+        const { data: profile } = await supabaseAdmin
+          .from("profiles")
+          .select("full_name, phone")
+          .eq("id", user_id)
+          .maybeSingle();
+
+        return new Response(JSON.stringify({
+          success: true,
+          member: {
+            user_id,
+            email: authUser?.user?.email ?? "",
+            full_name: profile?.full_name ?? "",
+            phone: profile?.phone ?? "",
+            role: targetMembership.role,
+          },
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      if (typeof password === "string" && password.length > 0 && password.length < 6) {
+        return new Response(JSON.stringify({ error: "Password must be at least 6 characters" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (typeof email === "string" && email.length > 0 && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        return new Response(JSON.stringify({ error: "Invalid email address" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const profileUpdates: Record<string, unknown> = {};
+      if (typeof full_name === "string") profileUpdates.full_name = full_name;
+      if (typeof phone === "string") profileUpdates.phone = phone;
+      if (Object.keys(profileUpdates).length > 0) {
+        const { error: pErr } = await supabaseAdmin.from("profiles").update(profileUpdates).eq("id", user_id);
+        if (pErr) throw pErr;
+      }
+
+      const authUpdates: Record<string, unknown> = {};
+      if (typeof email === "string" && email.length > 0) {
+        authUpdates.email = email;
+        authUpdates.email_confirm = true;
+      }
+      if (typeof password === "string" && password.length >= 6) authUpdates.password = password;
+      if (typeof full_name === "string") authUpdates.user_metadata = { full_name };
+
+      if (Object.keys(authUpdates).length > 0) {
+        const { error: aErr } = await supabaseAdmin.auth.admin.updateUserById(user_id, authUpdates);
+        if (aErr) {
+          return new Response(JSON.stringify({ error: aErr.message }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
+      // Keep linked staff record in sync when present
+      const staffUpdates: Record<string, unknown> = {};
+      if (typeof full_name === "string") staffUpdates.full_name = full_name;
+      if (typeof phone === "string") staffUpdates.phone = phone;
+      if (typeof email === "string" && email.length > 0) staffUpdates.email = email;
+      if (Object.keys(staffUpdates).length > 0) {
+        await supabaseAdmin.from("staff").update(staffUpdates).eq("user_id", user_id).eq("org_id", org_id);
       }
 
       return new Response(JSON.stringify({ success: true }), {

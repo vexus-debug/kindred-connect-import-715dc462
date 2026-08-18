@@ -66,6 +66,42 @@ export function useRevokeSuperAdmin() {
   });
 }
 
+export interface AdminUserDetails {
+  id: string;
+  email: string;
+  full_name: string;
+  phone: string;
+  account_status: string;
+}
+
+export async function fetchAdminUserDetails(target_user_id: string): Promise<AdminUserDetails> {
+  const data = await callAdminAction({ action: "get_user_details", target_user_id });
+  return data.user as AdminUserDetails;
+}
+
+export function useUpdateUserDetails() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: {
+      target_user_id: string;
+      full_name?: string;
+      phone?: string;
+      email?: string;
+      password?: string;
+    }) => {
+      return callAdminAction({ action: "update_user_details", ...payload });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["platform-audit-log"] });
+      toast({ title: "User updated" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+}
+
 export function useResetPassword() {
   const queryClient = useQueryClient();
   return useMutation({

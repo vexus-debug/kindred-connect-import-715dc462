@@ -8,7 +8,8 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, ExternalLink, Upload, Image as ImageIcon } from "lucide-react";
+import { Plus, Trash2, ExternalLink, Upload, Image as ImageIcon, Pencil } from "lucide-react";
+import { EditMemberDialog } from "@/components/dashboard/EditMemberDialog";
 import { useClinicSettings, useUpdateClinicSettings, type SiteSettings } from "@/hooks/useClinicSettings";
 import { useNotificationPreferences, useUpsertNotificationPreferences } from "@/hooks/useNotificationPreferences";
 import { useOrgMembers, useUpdateOrgMemberRole, useRemoveOrgMember } from "@/hooks/useOrgMembers";
@@ -97,6 +98,7 @@ export default function SettingsPage() {
 
   // Org members
   const { data: members = [] } = useOrgMembers();
+  const [editMemberUserId, setEditMemberUserId] = useState<string | null>(null);
   const updateMemberRole = useUpdateOrgMemberRole();
   const removeMember = useRemoveOrgMember();
   const [editMemberId, setEditMemberId] = useState<string | null>(null);

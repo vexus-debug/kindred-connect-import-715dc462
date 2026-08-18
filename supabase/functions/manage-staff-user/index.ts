@@ -38,7 +38,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { action, org_id, email, password, full_name, role, staff_id, user_id } = body;
+    const { action, org_id, email, password, full_name, phone, role, staff_id, user_id } = body;
 
     // Verify caller has owner/admin access to this org
     const { data: membership } = await supabaseAdmin

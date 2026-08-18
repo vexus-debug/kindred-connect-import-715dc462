@@ -47,7 +47,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { action, target_user_id, role, new_status } = body;
+    const { action, target_user_id, role, new_status, full_name, phone, email, password } = body;
 
     // Helper to log audit
     const logAudit = async (actionName: string, targetType: string, targetId: string, details: Record<string, unknown>) => {
@@ -200,6 +200,94 @@ serve(async (req) => {
       await logAudit("password_reset", "user", target_user_id, {});
 
       return new Response(JSON.stringify({ success: true, temp_password: tempPassword }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "get_user_details") {
+      if (!target_user_id) {
+        return new Response(JSON.stringify({ error: "target_user_id required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: targetUser, error: getErr } = await supabaseAdmin.auth.admin.getUserById(target_user_id);
+      if (getErr || !targetUser?.user) {
+        return new Response(JSON.stringify({ error: "User not found" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("full_name, phone, avatar_url, account_status")
+        .eq("id", target_user_id)
+        .maybeSingle();
+
+      return new Response(JSON.stringify({
+        success: true,
+        user: {
+          id: target_user_id,
+          email: targetUser.user.email ?? "",
+          full_name: profile?.full_name ?? "",
+          phone: profile?.phone ?? "",
+          account_status: profile?.account_status ?? "active",
+        },
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (action === "update_user_details") {
+      if (!target_user_id) {
+        return new Response(JSON.stringify({ error: "target_user_id required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (typeof password === "string" && password.length > 0 && password.length < 6) {
+        return new Response(JSON.stringify({ error: "Password must be at least 6 characters" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (typeof email === "string" && email.length > 0 && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        return new Response(JSON.stringify({ error: "Invalid email address" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Update profile fields
+      const profileUpdates: Record<string, unknown> = {};
+      if (typeof full_name === "string") profileUpdates.full_name = full_name;
+      if (typeof phone === "string") profileUpdates.phone = phone;
+      if (Object.keys(profileUpdates).length > 0) {
+        const { error: pErr } = await supabaseAdmin.from("profiles").update(profileUpdates).eq("id", target_user_id);
+        if (pErr) throw pErr;
+      }
+
+      // Update auth fields
+      const authUpdates: Record<string, unknown> = {};
+      if (typeof email === "string" && email.length > 0) {
+        authUpdates.email = email;
+        authUpdates.email_confirm = true;
+      }
+      if (typeof password === "string" && password.length >= 6) authUpdates.password = password;
+      if (typeof full_name === "string") authUpdates.user_metadata = { full_name };
+
+      if (Object.keys(authUpdates).length > 0) {
+        const { error: aErr } = await supabaseAdmin.auth.admin.updateUserById(target_user_id, authUpdates);
+        if (aErr) {
+          return new Response(JSON.stringify({ error: aErr.message }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
+      await logAudit("user_details_updated", "user", target_user_id, {
+        fields: Object.keys({ ...profileUpdates, ...authUpdates }).filter((k) => k !== "password"),
+        password_changed: typeof password === "string" && password.length >= 6,
+      });
+
+      return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

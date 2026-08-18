@@ -383,10 +383,13 @@ export default function SettingsPage() {
                               </Button>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-2">
-                              <Button variant="outline" size="sm" className="h-8 text-xs border-border/50" onClick={() => { setEditMemberId(member.id); setNewRole(""); }}>
-                                Change Role
-                              </Button>
+                             <div className="flex items-center gap-2">
+                               <Button variant="outline" size="sm" className="h-8 text-xs border-border/50" onClick={() => setEditMemberUserId(member.user_id)}>
+                                 <Pencil className="h-3 w-3 mr-1" /> Edit Details
+                               </Button>
+                               <Button variant="outline" size="sm" className="h-8 text-xs border-border/50" onClick={() => { setEditMemberId(member.id); setNewRole(""); }}>
+                                 Change Role
+                               </Button>
                               {member.role !== "owner" && (
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => removeMember.mutate(member.id)}>
                                   <Trash2 className="h-3.5 w-3.5" />
